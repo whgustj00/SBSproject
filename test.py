@@ -5,6 +5,7 @@ import cv2
 # define some constants
 CONFIDENCE_THRESHOLD = 0.8
 GREEN = (0, 255, 0)
+RED = (0, 0, 255)  # Red color for the bounding box when object touches line
 line_color = (255, 0, 0)  # Red color for the virtual line
 
 # List to store the points of all drawn lines
@@ -22,6 +23,44 @@ def draw_line(event, x, y, flags, param):
             drawn_lines[-1].append((x, y))  # Add the second point
             cv2.line(frame, drawn_lines[-1][0], drawn_lines[-1][1], line_color, 2)
 
+
+# Function to check if a line intersects a point
+def check_line_intersection(point, line):
+    """
+    This function checks if a point intersects with a line segment.
+
+    Args:
+        point: A tuple representing the point (x, y).
+        line: A tuple representing the line segment as two points ((x1, y1), (x2, y2)).
+
+    Returns:
+        True if the point intersects the line segment, False otherwise.
+    """
+
+    x1, y1 = line[0]
+    x2, y2 = line[1]
+    px, py = point
+
+    # Check for vertical line
+    if x1 == x2:
+        return px == x1 and min(y1, y2) <= py <= max(y1, y2)
+
+    # Check for horizontal line
+    elif y1 == y2:
+        return py == y1 and min(x1, x2) <= px <= max(x1, x2)
+
+    # Calculate the slope and y-intercept of the line
+    slope = (y2 - y1) / (x2 - x1)
+    intercept = y1 - slope * x1
+
+    # Check if the point lies on the line equation
+    if py == slope * px + intercept:
+        # Check if the point lies within the line segment range
+        return min(x1, x2) <= px <= max(x1, x2)
+
+    return False
+
+
 # initialize the video capture object (0: default webcam)
 video_cap = cv2.VideoCapture(0)
 
@@ -36,6 +75,11 @@ while True:
     start = datetime.datetime.now()
 
     ret, frame = video_cap.read()
+
+    # Draw previously drawn lines
+    for line in drawn_lines:
+        if len(line) == 2:  # Check only completed lines
+            cv2.line(frame, line[0], line[1], line_color, 2)
 
     # run the YOLO model on the frame
     detections = model(frame)[0]
@@ -55,14 +99,20 @@ while True:
             continue
 
         # if the confidence is greater than the minimum confidence,
-        # draw the bounding box on the frame
+        # draw the bounding box
         xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
-        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 2)
+        object_color = GREEN  # Initialize object color
 
-    # Draw all the drawn lines
-    for line in drawn_lines:
-        if len(line) == 2:
-            cv2.line(frame, line[0], line[1], line_color, 2)
+        # Check for collision between object and line segments
+        for line in drawn_lines:
+            if len(line) == 2:  # Check only completed lines
+                object_center = ((xmin + xmax) // 2, (ymin + ymax) // 2)
+                if check_line_intersection(object_center, line):
+                    object_color = RED  # Change color to red if object touches line
+                    break
+
+        # Draw the bounding box
+        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), object_color, 2)
 
     # end time to compute the fps
     end = datetime.datetime.now()
@@ -77,7 +127,6 @@ while True:
 
     # show the frame to our screen
     cv2.imshow("Frame", frame)
-
     if cv2.waitKey(1) == ord("q"):
         break
 

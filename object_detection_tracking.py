@@ -18,7 +18,6 @@ writer = create_video_writer(video_cap, "output.mp4")
 model = YOLO("yolov8n.pt")
 tracker = DeepSort(max_age=50)
 
-
 while True:
     start = datetime.datetime.now()
 

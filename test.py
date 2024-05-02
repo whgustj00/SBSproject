@@ -5,12 +5,31 @@ import cv2
 # define some constants
 CONFIDENCE_THRESHOLD = 0.8
 GREEN = (0, 255, 0)
+line_color = (255, 0, 0)  # Red color for the virtual line
+
+# List to store the points of all drawn lines
+drawn_lines = []  # This will store all the line segments (tuples of two points)
+
+# Mouse callback function to handle mouse events
+def draw_line(event, x, y, flags, param):
+    global drawn_lines
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drawn_lines.append([(x, y)])  # Start a new line with the current point
+
+    elif event == cv2.EVENT_LBUTTONUP:
+        if len(drawn_lines[-1]) == 1:  # If only one point has been clicked so far
+            drawn_lines[-1].append((x, y))  # Add the second point
+            cv2.line(frame, drawn_lines[-1][0], drawn_lines[-1][1], line_color, 2)
 
 # initialize the video capture object (0: default webcam)
 video_cap = cv2.VideoCapture(0)
 
 # load the pre-trained YOLOv8n model
 model = YOLO("yolov8n.pt")
+
+cv2.namedWindow("Frame")
+cv2.setMouseCallback("Frame", draw_line)
 
 while True:
     # start time to compute the fps
@@ -26,7 +45,7 @@ while True:
         # extract the confidence (i.e., probability) associated with the detection
         confidence = data[4]
 
-        # filter out weak detections by ensuring the 
+        # filter out weak detections by ensuring the
         # confidence is greater than the minimum confidence
         if float(confidence) < CONFIDENCE_THRESHOLD:
             continue
@@ -39,6 +58,11 @@ while True:
         # draw the bounding box on the frame
         xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
         cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 2)
+
+    # Draw all the drawn lines
+    for line in drawn_lines:
+        if len(line) == 2:
+            cv2.line(frame, line[0], line[1], line_color, 2)
 
     # end time to compute the fps
     end = datetime.datetime.now()
@@ -53,6 +77,7 @@ while True:
 
     # show the frame to our screen
     cv2.imshow("Frame", frame)
+
     if cv2.waitKey(1) == ord("q"):
         break
 

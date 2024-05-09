@@ -62,10 +62,10 @@ def check_line_intersection(point, line):
 
 
 # initialize the video capture object (0: default webcam)
-video_cap = cv2.VideoCapture(0)
+video_cap = cv2.VideoCapture(0) # 0번 웹캠 / 1번 OBS 가상카메라
 
 # load the pre-trained YOLOv8n model
-model = YOLO("yolov8n.pt")
+model = YOLO("yolov8n2.pt")
 
 cv2.namedWindow("Frame")
 cv2.setMouseCallback("Frame", draw_line)
@@ -103,12 +103,18 @@ while True:
         xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
         object_color = GREEN  # Initialize object color
 
-        # Check for collision between object and line segments
+         # Check for collision between object and line segments
         for line in drawn_lines:
             if len(line) == 2:  # Check only completed lines
-                object_center = ((xmin + xmax) // 2, (ymin + ymax) // 2)
-                if check_line_intersection(object_center, line):
-                    object_color = RED  # Change color to red if object touches line
+                # Check if any point inside the bounding box lies on the line
+                for x in range(xmin, xmax + 1):
+                    for y in range(ymin, ymax + 1):
+                        if check_line_intersection((x, y), line):
+                            object_color = RED  # Change color to red if any point inside the box is on the line
+                            break
+                    if object_color == RED:
+                        break
+                if object_color == RED:
                     break
 
         # Draw the bounding box

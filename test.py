@@ -3,6 +3,7 @@ from ultralytics import YOLO
 import cv2
 
 # 몇 가지 상수 정의
+CONFIDENCE_THRESHOLD = 0.5  # 신뢰도 임계값
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)  # 빨간색
 YELLOW = (0, 255, 255)  # 노란색
@@ -88,6 +89,10 @@ while True:
 
     # 감지된 객체에 대해 반복
     for data in detections.boxes.data.tolist():
+        confidence = data[4]
+        if confidence < CONFIDENCE_THRESHOLD:
+            continue
+
         xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
         class_id = int(data[5])
 

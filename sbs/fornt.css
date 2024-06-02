@@ -1,0 +1,173 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 15%; /* 기존에 비해 좀 더 줄임 */
+    background-color: #333;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+}
+
+
+.cam-list ul {
+    list-style-type: none;
+    padding: 0;
+    width: 100%;
+}
+
+.cam-list li {
+    padding: 10px;
+    border-bottom: 1px solid #444;
+    text-align: left;
+}
+
+.cam-button {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    outline: none;
+}
+
+.cam-button:hover,
+.cam-button:focus {
+    text-decoration: underline;
+}
+
+
+.buttons {
+    margin-top: auto;
+    width: 100%;
+}
+
+.buttons button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 5px;
+    background-color: #444;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+}
+
+.main {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    position: relative;
+}
+
+.camera-views {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2열로 고정 */
+    grid-template-rows: repeat(2, 1fr); /* 2행으로 고정 */
+    gap: 10px;
+    overflow-x: auto;
+    background-color: #eee;
+    padding: 10px;
+}
+
+.camera-view {
+    border: 1px solid #ccc;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.camera-view img {
+    max-width: 100%;
+    height: auto;
+}
+
+
+.event-logs {
+    width: 15%; /* 기존에 비해 좀 더 줄임 */
+    background-color: #333;
+    color: #fff;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.event-slider {
+    overflow-y: auto; /* 세로 스크롤 추가 */
+    max-height: 200px; /* 최대 높이 지정 */
+}
+
+.event {
+    padding: 10px;
+    border-bottom: 1px solid #444;
+}
+
+.event.highlighted {
+    border-left: 5px solid red;
+}
+
+.log-window {
+    background-color: #fff;
+    padding: 10px;
+    overflow-y: auto; 
+    height: 160px; 
+    margin-bottom: 40px;
+}
+
+.log {
+    padding: 5px;
+    border-bottom: 1px solid #ddd;
+}
+
+.log.highlighted {
+    color: red;
+}
+
+.query {
+    position: absolute;
+    bottom: 10px;
+    width: calc(100% - 20px);
+    background-color: #fff;
+    padding: 5px;
+    border: 1px solid #ddd;
+    font-weight: bold;
+}
+
+.log-container {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background-color: #fff;
+}
+
+@media (max-width: 800px) {
+    .camera-views {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+    }
+
+    .main {
+        flex-direction: column;
+    }
+
+    .event-logs {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+    }
+}

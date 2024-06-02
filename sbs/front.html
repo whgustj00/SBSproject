@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Layout</title>
+    <link rel="stylesheet" href="fornt.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="cam-list">
+                <ul>
+                    <li><button type="button" class="cam-button">cam1</button></li>
+                    <li><button type="button" class="cam-button">cam2</button></li>
+                    <li><button type="button" class="cam-button">cam3</button></li>
+                    <li><button type="button" class="cam-button">cam4</button></li>
+                </ul>
+            </div>
+            <div class="buttons">
+                <button>설정</button>
+                <button>버튼</button>
+                <button>버튼</button>
+            </div>
+        </div>
+        <div class="main">
+            <div class="camera-views">
+                <div id="cam1" class="camera-view">
+                    <img src="path/to/image.png" alt="cam1 view">
+                </div>
+                <div id="cam2" class="camera-view"></div>
+                <div id="cam3" class="camera-view"></div>
+                <div id="cam4" class="camera-view"></div>
+            </div>
+            <div class="log-container">
+                <div class="log-window">
+                    <div class="log">log 357: 20xx-xx-xx 이벤트 발생 - 이벤트 번호 cam1</div>
+                    <div class="log">log 358: 20xx-xx-xx 이벤트 발생 - 이벤트 번호 cam2</div>
+                    <div class="log highlighted">log 359: 20xx-xx-xx 이벤트 발생 - 이벤트 번호 cam1</div>
+                    <div class="log">log 360: 20xx-xx-xx 이벤트 발생 - 이벤트 번호 cam3</div>
+                    <div class="log">log 361: 20xx-xx-xx 이벤트 발생 - 이벤트 번호 cam1</div>
+                </div>
+                <div class="query">
+                    Q : <input type="text" placeholder="Type your query here..." style="width: calc(100% - 30px); border: none;">
+                </div>
+            </div>
+        </div>
+        <div class="event-logs">
+            <div class="event-slider" id="event-slider">
+                <div class="event-item">
+                    <div class="event-image">
+                        <img src="path/to/image1.png" alt="Event Image 1">
+                    </div>
+                    <button type="button" class="event-button cam-button">20xx-xx-xx 이벤트 발생</button>
+                </div>
+                <div class="event-item">
+                    <div class="event-image">
+                        <img src="path/to/image2.png" alt="Event Image 2">
+                    </div>
+                    <button type="button" class="event-button cam-button">20xx-xx-xx 이벤트 발생</button>
+                </div>
+                <div class="event-item">
+                    <div class="event-image">
+                        <img src="path/to/image3.png" alt="Event Image 3">
+                    </div>
+                    <button type="button" class="event-button cam-button">20xx-xx-xx 이벤트 발생</button>
+                </div>
+                <div class="event-item">
+                    <div class="event-image">
+                        <img src="path/to/image4.png" alt="Event Image 4">
+                    </div>
+                    <button type="button" class="event-button cam-button">20xx-xx-xx 이벤트 발생</button>
+                </div>
+                <div class="event-item">
+                    <div class="event-image">
+                        <img src="path/to/image5.png" alt="Event Image 5">
+                    </div>
+                    <button type="button" class="event-button cam-button highlighted">20xx-xx-xx 이벤트 발생</button>
+                </div>
+            </div>
+        </div>
+        
+        
+
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

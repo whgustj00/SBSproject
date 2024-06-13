@@ -97,7 +97,7 @@ while True:
 
         # 사람이 아닌 경우 바운딩 박스를 항상 초록색으로 그리기
         if class_id != 0 and (class_id == 2 or class_id == 6):
-            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 2)
+            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 1)
             continue
 
         # 사람인 경우 가상영역과 교차 여부 확인 (하단 25%)
@@ -107,25 +107,31 @@ while True:
                 if len(area) >= 4:  # 완료된 영역만 확인
                     if check_area_overlap(area, (xmin, ymin, xmax, ymax)):
                         object_color = area[0]
+                        if area[0] == RED:
+                            cv2.putText(frame, "warning", (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX, 2, RED, 8)
+                        elif area[0] == YELLOW:
+                            cv2.putText(frame, "warning", (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX, 2, YELLOW, 8)
                         break
-            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), object_color, 2)
+            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), object_color, 1)
 
     # 영역 그리기 (감지 후 프레임에 그림)
     for idx, area in enumerate(drawn_areas):
         if len(area) >= 3:
             pts = np.array(area[1:], np.int32).reshape((-1, 1, 2))
-            cv2.polylines(frame, [pts], isClosed=True, color=area[0], thickness=2)
+            cv2.polylines(frame, [pts], isClosed=True, color=area[0], thickness=1)
 
-    # FPS 계산을 위한 끝 시간
-    end = datetime.datetime.now()
-    # 1프레임 처리에 걸린 시간 표시
-    total = (end - start).total_seconds()
-    print(f"1프레임 처리에 걸린 시간: {total * 1000:.0f} 밀리초")
+    # # FPS 계산을 위한 끝 시간
+    # end = datetime.datetime.now()
+    # # 1프레임 처리에 걸린 시간 표시
+    # total = (end - start).total_seconds()
+    # print(f"1프레임 처리에 걸린 시간: {total * 1000:.0f} 밀리초")
 
-    # FPS 계산 및 프레임에 표시
-    fps = f"FPS: {1 / total:.2f}"
-    cv2.putText(frame, fps, (50, 50),
-                cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 8)
+    # # FPS 계산 및 프레임에 표시
+    # fps = f"FPS: {1 / total:.2f}"
+    # cv2.putText(frame, fps, (50, 50),
+    #             cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 8)
 
     # 원본 프레임을 사용하여 창 크기와 프레임 크기 동시에 조정하여 표시
     frame_resized = cv2.resize(frame, (window_width, window_height))

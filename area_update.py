@@ -1,58 +1,62 @@
-import datetime
-from ultralytics import YOLO
+import sys
 import cv2
 import numpy as np
+import datetime
 from shapely.geometry import Polygon
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QLineEdit, QScrollArea, QDialog
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QImage, QPixmap
+from ultralytics import YOLO
 
-# 몇 가지 상수 정의
-CONFIDENCE_THRESHOLD = 0.5  # 신뢰도 임계값
+# Constants
+CONFIDENCE_THRESHOLD = 0.5  # Confidence threshold
 GREEN = (0, 255, 0)
-RED = (0, 0, 255)  # 빨간색
-YELLOW = (0, 255, 255)  # 노란색
+RED = (0, 0, 255)  # Red color
+YELLOW = (0, 255, 255)  # Yellow color
 
-# 모든 영역들의 점들을 저장하는 리스트
-drawn_areas = []  # 모든 영역의 좌표를 저장함
-color_switch = 0  # 영역색 결정을 위한 변수
-new = True # 영역을 생성할 것인지 결정하는 변수
+# List to store the points of all areas
+drawn_areas = []  # Coordinates of all areas
+color_switch = 0  # Variable to determine area color
+new = True  # Variable to determine whether to create a new area
 
-# 비디오 캡처 객체 초기화 (0: 기본 웹캠)
-video_cap = cv2.VideoCapture(0)  # 0번 웹캠 / 1번 OBS 가상카메라
+# Video capture object initialization (0: default webcam)
+video_cap = cv2.VideoCapture(0)  # 0 for default webcam
 
-# 원본 프레임 크기 가져오기
+# Original frame size
 ret, frame = video_cap.read()
 if not ret:
-    raise ValueError("웹캠을 열 수 없습니다.")
+    raise ValueError("Cannot open webcam.")
 orig_height, orig_width = frame.shape[:2]
 
-# 창 크기 설정
+# Window size
 window_width, window_height = 1280, 720
 
 def draw_area(event, x, y, flags, param):
     global drawn_areas, area_color, color_switch, new
     global orig_width, orig_height, window_width, window_height
 
-    # 화면 좌표를 원본 프레임 좌표로 변환
+    # Convert screen coordinates to original frame coordinates
     x_orig = int(x * orig_width / window_width)
     y_orig = int(y * orig_height / window_height)
 
     if event == cv2.EVENT_LBUTTONDOWN:
-        # 현재 가상 영역의 색상 선택
+        # Select the color of the current virtual area
         if color_switch == 0:
-            area_color = YELLOW  # 노란색
+            area_color = YELLOW  # Yellow
         else:
-            area_color = RED  # 빨간색
+            area_color = RED  # Red
 
-        if not drawn_areas or new == True:
-            drawn_areas.append([area_color, (x_orig, y_orig)])  # 새로운 영역 시작
+        if not drawn_areas or new:
+            drawn_areas.append([area_color, (x_orig, y_orig)])  # Start a new area
             new = False
         else:
-            drawn_areas[-1].append((x_orig, y_orig))  # 현재 영역에 점 추가
+            drawn_areas[-1].append((x_orig, y_orig))  # Add point to current area
 
     if event == cv2.EVENT_RBUTTONDOWN:
-        new = True # 오른쪽 버튼 클릭으로 영역 완성
+        new = True  # Complete area on right click
 
-# 선과 바운딩 박스 10%가 교차하는지 확인하는 함수
-def check_area_overlap(area, box):
+# Function to check if line and bounding box overlap by 10%
+def check_area_overlap(area, box):  
     xmin, ymin, xmax, ymax = box
 
     poly1 = Polygon([i for i in area[1:]])
@@ -69,86 +73,209 @@ def check_area_overlap(area, box):
 
     return overlap_area >= 0.50 * rect2_area
 
-# 사전 훈련된 YOLOv8n 모델 로드
-model = YOLO("yolov8m.pt")
+# Pre-trained YOLOv8 model
+model = YOLO("yolov8x.pt")
 
-cv2.namedWindow("Frame", cv2.WINDOW_NORMAL)
-cv2.setMouseCallback("Frame", draw_area)
+class FrameProcessor(QThread):
 
-while True:
-    # FPS 계산을 위한 시작 시간
-    start = datetime.datetime.now()
+    def __init__(self):
+        super().__init__()
 
-    ret, frame = video_cap.read()
-    if not ret:
-        break
+    new_frame = pyqtSignal(np.ndarray)
 
-    # 프레임에서 YOLO 모델 실행 (가상선을 그리기 전 프레임 사용)
-    detections = model(frame)[0]
+    def run(self):
+        while True:
+            ret, frame = video_cap.read()
+            if not ret:
+                break
 
-    # 감지된 객체에 대해 반복
-    for data in detections.boxes.data.tolist():
-        confidence = data[4]
-        if confidence < CONFIDENCE_THRESHOLD:
-            continue
+            # Run YOLO model on the frame
+            detections = model(frame)[0]
 
-        xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
-        class_id = int(data[5])
+            # Iterate over detected objects
+            for data in detections.boxes.data.tolist():
+                confidence = data[4]
+                if confidence < CONFIDENCE_THRESHOLD:
+                    continue
 
-        # 사람이 아닌 경우 바운딩 박스를 항상 초록색으로 그리기
-        if class_id != 0 and (class_id == 2 or class_id == 6):
-            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 1)
-            continue
+                xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
+                class_id = int(data[5])
 
-        # 사람인 경우 가상영역과 교차 여부 확인 (하단 25%)
-        if class_id == 0:
-            object_color = GREEN  # 기본 색상은 초록색
+                # Draw bounding box for non-human objects in green
+                if class_id != 0 and (class_id == 2 or class_id == 6):
+                    cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 1)
+                    continue
+
+                # Check overlap with virtual area for human objects
+                if class_id == 0:
+                    object_color = GREEN  # Default color is green
+                    for idx, area in enumerate(drawn_areas):
+                        if len(area) >= 4:  # Check only completed areas
+                            if check_area_overlap(area, (xmin, ymin, xmax, ymax)):
+                                object_color = area[0]
+                                if area[0] == RED:
+                                    ex.add_log("DANGER")
+                                elif area[0] == YELLOW:
+                                    ex      .add_log("WARNING")
+                            
+                                break
+                    cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), object_color, 1)
+
+            # Draw areas
             for idx, area in enumerate(drawn_areas):
-                if len(area) >= 4:  # 완료된 영역만 확인
-                    if check_area_overlap(area, (xmin, ymin, xmax, ymax)):
-                        object_color = area[0]
-                        if area[0] == RED:
-                            cv2.putText(frame, "warning", (50, 50),
-                            cv2.FONT_HERSHEY_SIMPLEX, 2, RED, 8)
-                        elif area[0] == YELLOW:
-                            cv2.putText(frame, "warning", (50, 50),
-                            cv2.FONT_HERSHEY_SIMPLEX, 2, YELLOW, 8)
-                        break
-            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), object_color, 1)
+                if len(area) >= 3:
+                    pts = np.array(area[1:], np.int32).reshape((-1, 1, 2))
+                    cv2.polylines(frame, [pts], isClosed=True, color=area[0], thickness=1)
 
-    # 영역 그리기 (감지 후 프레임에 그림)
-    for idx, area in enumerate(drawn_areas):
-        if len(area) >= 3:
-            pts = np.array(area[1:], np.int32).reshape((-1, 1, 2))
-            cv2.polylines(frame, [pts], isClosed=True, color=area[0], thickness=1)
+            # Resize frame
+            frame_resized = cv2.resize(frame, (window_width, window_height))
 
-    # # FPS 계산을 위한 끝 시간
-    # end = datetime.datetime.now()
-    # # 1프레임 처리에 걸린 시간 표시
-    # total = (end - start).total_seconds()
-    # print(f"1프레임 처리에 걸린 시간: {total * 1000:.0f} 밀리초")
+            # Emit new frame signal
+            self.new_frame.emit(frame_resized)
+            self.msleep(30)
 
-    # # FPS 계산 및 프레임에 표시
-    # fps = f"FPS: {1 / total:.2f}"
-    # cv2.putText(frame, fps, (50, 50),
-    #             cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 8)
+class AreaSettingsDialog(QDialog):
+    def __init__(self):
+        super().__init__()
 
-    # 원본 프레임을 사용하여 창 크기와 프레임 크기 동시에 조정하여 표시
-    frame_resized = cv2.resize(frame, (window_width, window_height))
-    cv2.imshow("Frame", frame_resized)
+    def exec_(self):
+        cv2.namedWindow("Frame", cv2.WINDOW_NORMAL)
+        cv2.setMouseCallback("Frame", draw_area)
+        
+        while True:
+            ret, frame = video_cap.read()
+            if not ret:
+                break
 
-    key = cv2.waitKey(1) & 0xFF
-    if key == ord('q'):
-        print("프로그램을 종료합니다.")
-        break
-    elif key == ord('r'):
-        color_switch = 1
-    elif key == ord('y'):
-        color_switch = 0
-    elif key == ord('t'):
-        drawn_areas.clear()
-    elif key == ord('u'):
-        drawn_areas.pop(-1)
+            # Draw areas
+            for idx, area in enumerate(drawn_areas):
+                if len(area) >= 3:
+                    pts = np.array(area[1:], np.int32).reshape((-1, 1, 2))
+                    cv2.polylines(frame, [pts], isClosed=True, color=area[0], thickness=1)
 
-video_cap.release()
-cv2.destroyAllWindows()
+            # Resize frame
+            frame_resized = cv2.resize(frame, (window_width, window_height))
+            cv2.imshow("Frame", frame_resized)
+
+            key = cv2.waitKey(1) & 0xFF
+            global color_switch
+            if key == ord('q'):
+                break
+            elif key == ord('r'):
+                color_switch = 1
+            elif key == ord('y'):
+                color_switch = 0
+            elif key == ord('t'):
+                drawn_areas.clear()
+            elif key == ord('u'):
+                drawn_areas.pop(-1)
+
+        cv2.destroyAllWindows()
+        self.close()
+
+class MyApp(QWidget):
+
+    log_signal = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.logs = []
+        self.initUI()
+        self.log_signal.connect(self.update_log)
+
+        self.frame_processor = FrameProcessor()
+        self.frame_processor.new_frame.connect(self.update_frame)
+        self.frame_processor.start()
+
+    def initUI(self):
+        # Main layout
+        main_layout = QHBoxLayout()
+        self.setLayout(main_layout)
+
+        # Sidebar layout
+        sidebar = QVBoxLayout()
+        cam_list = QListWidget()
+        cams = ['cam1', 'cam2', 'cam3', 'cam4']
+        for cam in cams:
+            cam_list.addItem(cam)
+        sidebar.addWidget(cam_list)
+
+        buttons = QVBoxLayout()
+        settings_button = QPushButton('Settings')
+        settings_button.clicked.connect(self.open_settings_dialog)
+        buttons.addWidget(settings_button)
+        for _ in range(2):
+            button = QPushButton('Button')
+            buttons.addWidget(button)
+        sidebar.addLayout(buttons)
+
+        sidebar_widget = QWidget()
+        sidebar_widget.setLayout(sidebar)
+        sidebar_widget.setStyleSheet("background-color: #333; color: #fff;")
+
+        main_layout.addWidget(sidebar_widget, 1)
+
+        # Main area layout
+        main_area = QVBoxLayout()
+
+        self.camera_view = QLabel()
+        self.camera_view.setFixedSize(1280, 720)
+        self.camera_view.setStyleSheet("border: 1px solid #ccc; background-color: #fff;")
+        self.camera_view.setAlignment(Qt.AlignCenter)
+        main_area.addWidget(self.camera_view)
+
+        # 이벤트 로그
+        event_logs = QVBoxLayout()
+        self.log_content = QVBoxLayout()
+        self.log_widget = QWidget()
+        self.log_widget.setLayout(self.log_content)
+        self.log_window = QScrollArea()
+        self.log_window.setWidget(self.log_widget)
+        self.log_window.setWidgetResizable(True)
+        event_logs.addWidget(self.log_window)
+
+        event_logs_widget = QWidget()
+        event_logs_widget.setLayout(event_logs)
+        event_logs_widget.setStyleSheet("background-color: #333; color: #fff;")
+
+        main_area.addWidget(event_logs_widget, 1)
+
+        main_widget = QWidget()
+        main_widget.setLayout(main_area)
+
+        main_layout.addWidget(main_widget, 2)
+
+        # Main window settings
+        self.setWindowTitle('UI Layout')
+        self.setGeometry(100, 100, 1600, 900)
+        self.setLayout(main_layout)
+        self.show()
+
+    def update_frame(self, frame):
+        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        self.camera_view.setPixmap(QPixmap.fromImage(qt_image))
+
+    def open_settings_dialog(self):
+        dialog = AreaSettingsDialog()
+        dialog.exec_()
+
+    def add_log(self, event):
+        self.log_signal.emit(event)
+
+    def update_log(self, event):
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"log {len(self.logs)+1}: {current_time} {event}"
+        self.logs.append(log_entry)
+        # UI 업데이트
+        log_label = QLabel(log_entry)
+        self.log_content.addWidget(log_label)
+        self.log_widget.setLayout(self.log_content)
+        self.log_window.setWidget(self.log_widget)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = MyApp()    
+    sys.exit(app.exec_())
